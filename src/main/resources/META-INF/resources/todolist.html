@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TODO List</title>
+</head>
+<body>
+    <h3>Add a task</h3>
+    <form id="add-task-form">
+      <label>Enter task title:</label>
+      <input type="text" id="title">
+      <label>Enter task description:</label>
+      <input type="text" id="description">
+      <input type="submit" value="Add task">
+    </form>
+
+    <h3>Tasks:</h3>
+    <div id="tasks-container"></div>
+
+    <script type="text/javascript">
+        async function fetchTasks(){
+            try {
+                const resp = await fetch('/todolist');
+                if(!resp.ok){
+                    throw new Error(`HTTP error! status ${resp.status}`);
+                }
+                const tasks = await resp.json();
+                console.log(`alright we got the tasks! ${tasks}`)
+                return tasks;
+            } catch (err) {
+                console.error("Error fetching tasks", err);
+                return [];
+            }
+        }
+
+        async function renderTasks(){
+            const tasks = await fetchTasks();
+            const container = document.getElementById('tasks-container');
+            container.innerHTML = '';
+
+            tasks.forEach(task => {
+                const card = document.createElement('div');
+                card.classList.add('task-card');
+                card.dataset.id = task.id;
+                container.appendChild(card);
+
+                const title = document.createElement('h4');
+                title.textContent = task.title;
+                card.appendChild(title);
+
+                const id = document.createElement("h5");
+                id.textContent = `id: ${task.id}`;
+                card.appendChild(id);
+
+                const desc = document.createElement('p');
+                desc.textContent = task.description;
+                card.appendChild(desc);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.addEventListener('click', () => deleteTask(task.id))
+                card.appendChild(deleteBtn)
+            })
+        }
+
+        async function deleteTask(taskId){
+            try {
+                const resp = await fetch(`/todolist/${taskId}`, {method: 'DELETE'});
+                if(!resp.ok){
+                    throw new Error(`Delete failed status: ${resp.status}`);
+                }
+                await renderTasks();
+            } catch (err) {
+                console.error("Error deleting task: ", err);
+            }
+        }
+
+        document.querySelector('form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            try {
+                const resp = await fetch('/todolist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "title": title,
+                        "description": description
+                    })
+                });
+                if(!resp.ok){
+                    throw new Error(`Add failed status: ${resp.status}`);
+                }
+                document.getElementById('title').value = '';
+                document.getElementById('description').value = '';
+                await renderTasks();
+            }catch (err){
+                console.error("Error adding task: ", err);
+            }
+        })
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTasks();
+        });
+    </script>
+</body>
+</html>
